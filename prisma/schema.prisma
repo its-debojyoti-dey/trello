@@ -1,0 +1,57 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  boards    Board[]  @relation(fields: [boardIds], references: [id])
+  boardIds  String[] @db.ObjectId
+  cards     Card[]
+}
+
+model Board {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  privacy   String      @default("PUBLIC")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  users     User[]      @relation(fields: [userIds], references: [id])
+  userIds   String[]    @db.ObjectId
+  lists     BoardList[]
+}
+
+model BoardList {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  boardId   String   @db.ObjectId
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards     Card[]
+}
+
+model Card {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  listId      String    @db.ObjectId
+  list        BoardList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  
+  assignedTo  User?     @relation(fields: [assignedToId], references: [id])
+  assignedToId String?  @db.ObjectId
+}

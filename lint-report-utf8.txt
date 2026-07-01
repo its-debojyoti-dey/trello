@@ -1,0 +1,178 @@
+﻿
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\boards\[id]\page.tsx
+   64:5   error    Error: Cannot access variable before it is declared
+
+`fetchBoardData` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\boards\[id]\page.tsx:64:5
+  62 |
+  63 |   useEffect(() => {
+> 64 |     fetchBoardData();
+     |     ^^^^^^^^^^^^^^ `fetchBoardData` accessed before it is declared
+  65 |     fetchAllUsers();
+  66 |   }, [boardId]);
+  67 |
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\boards\[id]\page.tsx:68:3
+  66 |   }, [boardId]);
+  67 |
+> 68 |   const fetchBoardData = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 69 |     setIsLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 70 |     setError(null);
+     ΓÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 85 |     }
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 86 |   };
+     | ^^^^^ `fetchBoardData` is declared here
+  87 |
+  88 |   const fetchAllUsers = async () => {
+  89 |     try {                          react-hooks/immutability
+   65:5   error    Error: Cannot access variable before it is declared
+
+`fetchAllUsers` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\boards\[id]\page.tsx:65:5
+  63 |   useEffect(() => {
+  64 |     fetchBoardData();
+> 65 |     fetchAllUsers();
+     |     ^^^^^^^^^^^^^ `fetchAllUsers` accessed before it is declared
+  66 |   }, [boardId]);
+  67 |
+  68 |   const fetchBoardData = async () => {
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\boards\[id]\page.tsx:88:3
+   86 |   };
+   87 |
+>  88 |   const fetchAllUsers = async () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  89 |     try {
+      | ^^^^^^^^^
+>  90 |       const res = await fetch('/api/users');
+      ΓÇª
+      | ^^^^^^^^^
+>  97 |     }
+      | ^^^^^^^^^
+>  98 |   };
+      | ^^^^^ `fetchAllUsers` is declared here
+   99 |
+  100 |   const handleDeleteBoard = async () => {
+  101 |     if (!board) return;  react-hooks/immutability
+   66:6   warning  React Hook useEffect has a missing dependency: 'fetchBoardData'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+   81:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  119:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  137:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  164:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  187:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  214:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\components\CardModal.tsx
+   16:11  warning  'Card' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   53:7   error    Error: Cannot access variable before it is declared
+
+`fetchCardDetails` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\components\CardModal.tsx:53:7
+  51 |   useEffect(() => {
+  52 |     if (isOpen && cardId) {
+> 53 |       fetchCardDetails();
+     |       ^^^^^^^^^^^^^^^^ `fetchCardDetails` accessed before it is declared
+  54 |     }
+  55 |   }, [isOpen, cardId]);
+  56 |
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\components\CardModal.tsx:57:3
+  55 |   }, [isOpen, cardId]);
+  56 |
+> 57 |   const fetchCardDetails = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 58 |     setIsLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 59 |     setError(null);
+     ΓÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 74 |     }
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 75 |   };
+     | ^^^^^ `fetchCardDetails` is declared here
+  76 |
+  77 |   // Close modal on Esc keypress
+  78 |   useEffect(() => {  react-hooks/immutability
+   55:6   warning  React Hook useEffect has a missing dependency: 'fetchCardDetails'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+   70:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+  119:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+  146:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\components\UserModal.tsx
+  28:7   error  Error: Cannot access variable before it is declared
+
+`fetchUsers` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\components\UserModal.tsx:28:7
+  26 |   useEffect(() => {
+  27 |     if (isOpen) {
+> 28 |       fetchUsers();
+     |       ^^^^^^^^^^ `fetchUsers` accessed before it is declared
+  29 |     }
+  30 |   }, [isOpen]);
+  31 |
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\components\UserModal.tsx:32:3
+  30 |   }, [isOpen]);
+  31 |
+> 32 |   const fetchUsers = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 33 |     setIsLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 34 |     setError(null);
+     ΓÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 46 |     }
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 47 |   };
+     | ^^^^^ `fetchUsers` is declared here
+  48 |
+  49 |   const handleSubmit = async (e: React.FormEvent) => {
+  50 |     e.preventDefault();  react-hooks/immutability
+  42:19  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  73:19  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\page.tsx
+   30:5   error  Error: Cannot access variable before it is declared
+
+`fetchBoards` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\page.tsx:30:5
+  28 |
+  29 |   useEffect(() => {
+> 30 |     fetchBoards();
+     |     ^^^^^^^^^^^ `fetchBoards` accessed before it is declared
+  31 |   }, []);
+  32 |
+  33 |   const fetchBoards = async () => {
+
+D:\Debojyoti\Interview Tasks\Ascendo AI\src\app\page.tsx:33:3
+  31 |   }, []);
+  32 |
+> 33 |   const fetchBoards = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 34 |     setIsLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 35 |     setError(null);
+     ΓÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 47 |     }
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 48 |   };
+     | ^^^^^ `fetchBoards` is declared here
+  49 |
+  50 |   const handleCreateBoard = async (e: React.FormEvent) => {
+  51 |     e.preventDefault();  react-hooks/immutability
+   43:19  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+   76:19  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  102:19  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+
+Γ£û 22 problems (19 errors, 3 warnings)
+
