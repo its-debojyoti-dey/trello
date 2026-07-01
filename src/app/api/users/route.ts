@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Name and email required' }, { status: 400 });
     }
     const user = await db.user.create({ data: { name, email } });
-    return NextResponse.json(user, { status: 210 });
+    return NextResponse.json(user, { status: 201 });
   } catch (e) {
     const error = e as Error;
     return NextResponse.json({ error: error.message }, { status: 500 });

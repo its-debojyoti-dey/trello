@@ -23,6 +23,7 @@ model Board {
   id        String      @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   privacy   String      @default("PUBLIC")
+  url       String      @default("")
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 

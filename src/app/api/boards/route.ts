@@ -23,7 +23,11 @@ export async function POST(req: Request) {
         privacy: privacy || 'PUBLIC',
       },
     });
-    return NextResponse.json(board, { status: 201 });
+    const updatedBoard = await db.board.update({
+      where: { id: board.id },
+      data: { url: `/boards/${board.id}` },
+    });
+    return NextResponse.json(updatedBoard, { status: 201 });
   } catch (e) {
     const error = e as Error;
     return NextResponse.json({ error: error.message }, { status: 500 });
