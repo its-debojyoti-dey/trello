@@ -310,6 +310,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         setError(null);
       } finally {
         inFlightPuts.current--;
+        if (inFlightPuts.current === 0) {
+          await fetchBoardData(false);
+        }
       }
     } catch (err) {
       const error = err as Error;
@@ -464,8 +467,6 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                     padding: '0 28px 0 28px',
                     fontSize: '13px',
                     borderRadius: 'var(--rounded-md)',
-                    backgroundColor: 'var(--colors-canvas)',
-                    color: 'var(--colors-ink)',
                     transition: 'all 0.15s ease',
                   }}
                 />
