@@ -60,6 +60,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [newCardNames, setNewCardNames] = useState<Record<string, string>>({});
   const [activeAddCardListId, setActiveAddCardListId] = useState<string | null>(null);
 
+  // Search/Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+
   const fetchBoardData = async () => {
     setIsLoading(true);
     setError(null);
@@ -312,6 +315,76 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
           {board && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+              {/* Search input */}
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="Search cards..."
+                  className="form-input"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: '180px',
+                    height: '32px',
+                    padding: '0 12px 0 28px',
+                    fontSize: '13px',
+                    borderRadius: 'var(--rounded-md)',
+                    border: '1px solid var(--colors-hairline)',
+                    backgroundColor: 'var(--colors-canvas)',
+                    color: 'var(--colors-ink)',
+                    transition: 'all 0.15s ease',
+                  }}
+                />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--colors-muted)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    position: 'absolute',
+                    left: '8px',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: 'var(--colors-muted)',
+                    }}
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
               {/* Member pile and invite selector */}
               <div
                 style={{
@@ -502,20 +575,29 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
               paddingBottom: 'var(--spacing-md)',
             }}
           >
-            {board.lists.map((list) => (
-              <div
-                key={list.id}
-                style={{
-                  width: '280px',
-                  flexShrink: 0,
-                  backgroundColor: 'var(--colors-surface-soft)',
-                  border: '1px solid var(--colors-hairline)',
-                  borderRadius: 'var(--rounded-lg)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  maxHeight: '100%',
-                }}
-              >
+            {board.lists.map((list) => {
+              const filteredCards = list.cards.filter((card) => {
+                if (!searchQuery.trim()) return true;
+                const query = searchQuery.toLowerCase().trim();
+                const nameMatch = card.name?.toLowerCase().includes(query);
+                const descMatch = card.description?.toLowerCase().includes(query);
+                return nameMatch || descMatch;
+              });
+
+              return (
+                <div
+                  key={list.id}
+                  style={{
+                    width: '280px',
+                    flexShrink: 0,
+                    backgroundColor: 'var(--colors-surface-soft)',
+                    border: '1px solid var(--colors-hairline)',
+                    borderRadius: 'var(--rounded-lg)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    maxHeight: '100%',
+                  }}
+                >
                 {/* List Header */}
                 <div
                   style={{
@@ -590,7 +672,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                     flex: 1,
                   }}
                 >
-                  {list.cards.map((card) => (
+                  {filteredCards.map((card) => (
                     <div
                       key={card.id}
                       onClick={() => {
@@ -662,7 +744,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                     </div>
                   ))}
 
-                  {list.cards.length === 0 && (
+                  {filteredCards.length === 0 && (
                     <div
                       style={{
                         padding: 'var(--spacing-md) 0',
@@ -673,7 +755,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                         borderRadius: 'var(--rounded-md)',
                       }}
                     >
-                      Empty List
+                      {searchQuery.trim() ? 'No matching cards' : 'Empty List'}
                     </div>
                   )}
                 </div>
@@ -767,7 +849,8 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             {/* Add List column */}
             <div style={{ width: '280px', flexShrink: 0 }}>
