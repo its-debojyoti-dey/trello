@@ -65,6 +65,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
   // Drag and Drop state
   const [activeDragOverListId, setActiveDragOverListId] = useState<string | null>(null);
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
 
   const fetchBoardData = async () => {
     setIsLoading(true);
@@ -233,6 +234,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const handleDrop = async (e: React.DragEvent, targetListId: string) => {
     e.preventDefault();
     setActiveDragOverListId(null);
+    setDraggedCardId(null);
 
     const cardId = e.dataTransfer.getData('text/plain');
     if (!cardId) return;
@@ -665,6 +667,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     borderBottom: '1px solid var(--colors-hairline-soft)',
+                    pointerEvents: draggedCardId ? 'none' : 'auto',
                   }}
                 >
                   <h3
@@ -729,6 +732,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                     gap: 'var(--spacing-sm)',
                     overflowY: 'auto',
                     flex: 1,
+                    pointerEvents: draggedCardId ? 'none' : 'auto',
                   }}
                 >
                   {filteredCards.map((card) => (
@@ -737,6 +741,11 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                       draggable={true}
                       onDragStart={(e) => {
                         e.dataTransfer.setData('text/plain', card.id);
+                        setDraggedCardId(card.id);
+                      }}
+                      onDragEnd={() => {
+                        setActiveDragOverListId(null);
+                        setDraggedCardId(null);
                       }}
                       onClick={() => {
                         setActiveCardId(card.id);
@@ -753,6 +762,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                         flexDirection: 'column',
                         gap: '6px',
                         cursor: 'grab',
+                        pointerEvents: draggedCardId ? 'none' : 'auto',
                       }}
                     >
                       <div
@@ -825,7 +835,13 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                 </div>
 
                 {/* Add Card Form inline */}
-                <div style={{ padding: 'var(--spacing-md)', borderTop: '1px solid var(--colors-hairline-soft)' }}>
+                <div
+                  style={{
+                    padding: 'var(--spacing-md)',
+                    borderTop: '1px solid var(--colors-hairline-soft)',
+                    pointerEvents: draggedCardId ? 'none' : 'auto',
+                  }}
+                >
                   {activeAddCardListId === list.id ? (
                     <form
                       onSubmit={(e) => {
