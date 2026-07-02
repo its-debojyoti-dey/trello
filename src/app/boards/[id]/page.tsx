@@ -105,6 +105,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     } finally {
       if (abortControllerRef.current === controller) {
         setIsLoading(false);
+        abortControllerRef.current = null;
       }
     }
   };
@@ -387,6 +388,8 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const nonMembers = allUsers.filter(
     (u) => !board?.users.some((member) => member.id === u.id)
   );
+
+  const searchCleaned = searchQuery.toLowerCase().trim();
 
   return (
     <>
@@ -761,10 +764,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
           >
             {board.lists.map((list) => {
               const filteredCards = list.cards.filter((card) => {
-                if (!searchQuery.trim()) return true;
-                const query = searchQuery.toLowerCase().trim();
-                const nameMatch = card.name ? card.name.toLowerCase().includes(query) : false;
-                const descMatch = card.description ? card.description.toLowerCase().includes(query) : false;
+                if (!searchCleaned) return true;
+                const nameMatch = card.name ? card.name.toLowerCase().includes(searchCleaned) : false;
+                const descMatch = card.description ? card.description.toLowerCase().includes(searchCleaned) : false;
                 return nameMatch || descMatch;
               });
 
