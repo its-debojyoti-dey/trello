@@ -63,6 +63,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   // Search/Filter state
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Drag and Drop state
+  const [activeDragOverListId, setActiveDragOverListId] = useState<string | null>(null);
+
   const fetchBoardData = async () => {
     setIsLoading(true);
     setError(null);
@@ -224,6 +227,38 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     } catch (err) {
       const error = err as Error;
       alert(error.message || 'Failed to add card');
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetListId: string) => {
+    e.preventDefault();
+    setActiveDragOverListId(null);
+
+    const cardId = e.dataTransfer.getData('text/plain');
+    if (!cardId) return;
+
+    // Find the target list to see if the card is already in it
+    const targetList = board?.lists.find((l) => l.id === targetListId);
+    const isCardAlreadyInList = targetList?.cards.some((c) => c.id === cardId);
+
+    if (isCardAlreadyInList) return;
+
+    try {
+      const res = await fetch(`/api/cards/${cardId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listId: targetListId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to move card');
+      }
+
+      fetchBoardData();
+    } catch (err) {
+      const error = err as Error;
+      alert(error.message || 'Failed to move card');
     }
   };
 
@@ -586,15 +621,40 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
               return (
                 <div
                   key={list.id}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (activeDragOverListId !== list.id) {
+                      setActiveDragOverListId(list.id);
+                    }
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    if (activeDragOverListId !== list.id) {
+                      setActiveDragOverListId(list.id);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (activeDragOverListId === list.id) {
+                      setActiveDragOverListId(null);
+                    }
+                  }}
+                  onDrop={(e) => handleDrop(e, list.id)}
                   style={{
                     width: '280px',
                     flexShrink: 0,
-                    backgroundColor: 'var(--colors-surface-soft)',
-                    border: '1px solid var(--colors-hairline)',
+                    backgroundColor:
+                      activeDragOverListId === list.id
+                        ? 'var(--colors-surface-strong)'
+                        : 'var(--colors-surface-soft)',
+                    border:
+                      activeDragOverListId === list.id
+                        ? '1px solid var(--colors-primary)'
+                        : '1px solid var(--colors-hairline)',
                     borderRadius: 'var(--rounded-lg)',
                     display: 'flex',
                     flexDirection: 'column',
                     maxHeight: '100%',
+                    transition: 'background-color 0.2s ease, border-color 0.2s ease',
                   }}
                 >
                 {/* List Header */}
@@ -674,6 +734,10 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                   {filteredCards.map((card) => (
                     <div
                       key={card.id}
+                      draggable={true}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', card.id);
+                      }}
                       onClick={() => {
                         setActiveCardId(card.id);
                         setIsCardModalOpen(true);
@@ -688,6 +752,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '6px',
+                        cursor: 'grab',
                       }}
                     >
                       <div
