@@ -326,10 +326,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                   style={{
                     width: '180px',
                     height: '32px',
-                    padding: '0 12px 0 28px',
+                    padding: '0 28px 0 28px',
                     fontSize: '13px',
                     borderRadius: 'var(--rounded-md)',
-                    border: '1px solid var(--colors-hairline)',
                     backgroundColor: 'var(--colors-canvas)',
                     color: 'var(--colors-ink)',
                     transition: 'all 0.15s ease',
@@ -579,8 +578,8 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
               const filteredCards = list.cards.filter((card) => {
                 if (!searchQuery.trim()) return true;
                 const query = searchQuery.toLowerCase().trim();
-                const nameMatch = card.name?.toLowerCase().includes(query);
-                const descMatch = card.description?.toLowerCase().includes(query);
+                const nameMatch = card.name ? card.name.toLowerCase().includes(query) : false;
+                const descMatch = card.description ? card.description.toLowerCase().includes(query) : false;
                 return nameMatch || descMatch;
               });
 
