@@ -241,58 +241,35 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
     if (!board) return;
 
-    // Find the source list and the card to move from current board state first
-    let initialCardToMove: Card | undefined;
-    let initialSourceListId: string | undefined;
+    // Find the source list and the card to move synchronously before calling setBoard
+    let cardToMove: Card | undefined;
+    let sourceListId: string | undefined;
 
     for (const list of board.lists) {
       const card = list.cards.find((c) => c.id === cardId);
       if (card) {
-        initialCardToMove = card;
-        initialSourceListId = list.id;
+        cardToMove = card;
+        sourceListId = list.id;
         break;
       }
     }
 
-    if (!initialCardToMove || !initialSourceListId) return;
-    if (initialSourceListId === targetListId) return;
+    if (!cardToMove || !sourceListId) return;
+    if (sourceListId === targetListId) return;
 
-    // Variables to be populated by the functional state updater
-    let cardToMove: Card | undefined;
-    let sourceListId: string | undefined;
-
-    // Optimistically update the UI state using the functional state updater callback
+    // Optimistically update the UI state
     setBoard((prevBoard) => {
       if (!prevBoard) return null;
 
-      let foundCard: Card | undefined;
-      let foundSourceListId: string | undefined;
-
-      for (const list of prevBoard.lists) {
-        const card = list.cards.find((c) => c.id === cardId);
-        if (card) {
-          foundCard = card;
-          foundSourceListId = list.id;
-          break;
-        }
-      }
-
-      if (!foundCard || !foundSourceListId) return prevBoard;
-      if (foundSourceListId === targetListId) return prevBoard;
-
-      // Assign to outer closure variables so we can use them in the catch block
-      cardToMove = foundCard;
-      sourceListId = foundSourceListId;
-
       const updatedLists = prevBoard.lists.map((list) => {
-        if (list.id === foundSourceListId) {
+        if (list.id === sourceListId) {
           return {
             ...list,
             cards: list.cards.filter((c) => c.id !== cardId),
           };
         }
         if (list.id === targetListId) {
-          const updatedCard = { ...foundCard!, listId: targetListId };
+          const updatedCard = { ...cardToMove!, listId: targetListId };
           return {
             ...list,
             cards: [...list.cards, updatedCard],
@@ -327,14 +304,14 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
         // Verify that the card with cardId is actually present in targetListId currently
         const targetList = prevBoard.lists.find((l) => l.id === targetListId);
-        const isCardPresentInTarget = targetList?.cards.some((c) => c.id === cardId);
+        const currentCard = targetList?.cards.find((c) => c.id === cardId);
 
-        if (!isCardPresentInTarget) {
+        if (!currentCard) {
           // Abort rollback (do not change state)
           return prevBoard;
         }
 
-        // Revert card back to sourceListId
+        // Revert card back to sourceListId, keeping all its current fields/properties (to preserve any concurrent edits) except listId
         const revertedLists = prevBoard.lists.map((list) => {
           if (list.id === targetListId) {
             return {
@@ -342,12 +319,12 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
               cards: list.cards.filter((c) => c.id !== cardId),
             };
           }
-          if (list.id === (sourceListId || initialSourceListId)) {
+          if (list.id === sourceListId) {
             const exists = list.cards.some((c) => c.id === cardId);
             if (exists) return list;
             const revertedCard = {
-              ...(cardToMove || initialCardToMove)!,
-              listId: (sourceListId || initialSourceListId)!,
+              ...currentCard,
+              listId: sourceListId!,
             };
             return {
               ...list,
@@ -362,7 +339,11 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
           lists: revertedLists,
         };
       });
+
       setError(error.message || 'Failed to move card');
+      
+      // Trigger fetchBoardData() at the end of the catch block to sync client with actual DB state
+      await fetchBoardData();
     }
   };
 
