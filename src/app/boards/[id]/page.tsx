@@ -49,6 +49,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
   // In-flight PUT tracking for drag and drop operations
   const inFlightPuts = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Modals state
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -71,12 +72,20 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
 
   const fetchBoardData = async (clearError = true) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     if (clearError) {
       setError(null);
     }
     try {
-      const res = await fetch(`/api/boards/${boardId}`);
+      const res = await fetch(`/api/boards/${boardId}`, {
+        signal: controller.signal,
+      });
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error('Board not found');
@@ -89,9 +98,14 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
       }
     } catch (err) {
       const error = err as Error;
+      if (error.name === 'AbortError') {
+        return;
+      }
       setError(error.message || 'Something went wrong');
     } finally {
-      setIsLoading(false);
+      if (abortControllerRef.current === controller) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -111,6 +125,11 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchBoardData();
     fetchAllUsers();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId]);
 
@@ -654,16 +673,47 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         {error && (
           <div
             style={{
+              position: 'relative',
               backgroundColor: 'rgba(239, 68, 68, 0.08)',
               color: 'var(--colors-error)',
               border: '1px solid rgba(239, 68, 68, 0.2)',
               padding: 'var(--spacing-md)',
+              paddingRight: '40px',
               borderRadius: 'var(--rounded-md)',
               marginBottom: 'var(--spacing-lg)',
               fontSize: '14px',
             }}
           >
             {error}
+            <button
+              onClick={() => setError(null)}
+              aria-label="Dismiss error"
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--colors-error)',
+                cursor: 'pointer',
+                fontSize: '18px',
+                lineHeight: 1,
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 0.8,
+                transition: 'opacity 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '0.8';
+              }}
+            >
+              &times;
+            </button>
           </div>
         )}
 
