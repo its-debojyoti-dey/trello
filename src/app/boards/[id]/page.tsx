@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import UserModal from '../../components/UserModal';
@@ -47,6 +47,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // In-flight PUT tracking for drag and drop operations
+  const inFlightPuts = useRef(0);
+
   // Modals state
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
@@ -81,7 +84,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         throw new Error('Failed to fetch board details');
       }
       const data = await res.json();
-      setBoard(data);
+      if (inFlightPuts.current === 0) {
+        setBoard(data);
+      }
     } catch (err) {
       const error = err as Error;
       setError(error.message || 'Something went wrong');
@@ -259,6 +264,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     if (!cardToMove || !sourceListId) return;
     if (sourceListId === targetListId) return;
 
+    // In-flight PUT tracking: increment right before performing optimistic update
+    inFlightPuts.current++;
+
     // Optimistically update the UI state
     setBoard((prevBoard) => {
       if (!prevBoard) return null;
@@ -287,15 +295,21 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     });
 
     try {
-      const res = await fetch(`/api/cards/${cardId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listId: targetListId }),
-      });
+      try {
+        const res = await fetch(`/api/cards/${cardId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ listId: targetListId }),
+        });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to move card');
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to move card');
+        }
+
+        setError(null);
+      } finally {
+        inFlightPuts.current--;
       }
     } catch (err) {
       const error = err as Error;
@@ -847,7 +861,6 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                         flexDirection: 'column',
                         gap: '6px',
                         cursor: 'grab',
-                        pointerEvents: draggedCardId ? 'none' : 'auto',
                       }}
                     >
                       <div
