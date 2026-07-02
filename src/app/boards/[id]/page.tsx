@@ -259,12 +259,6 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     // If the card is already in the target list, do nothing
     if (sourceListId === targetListId) return;
 
-    // Clear any previous error before performing the action
-    setError(null);
-
-    // Deep clone the original lists state to revert if needed
-    const originalLists = JSON.parse(JSON.stringify(board.lists)) as BoardList[];
-
     // Optimistically update the UI state
     const updatedLists = board.lists.map((list) => {
       if (list.id === sourceListId) {
@@ -299,17 +293,32 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to move card');
       }
-
-      // Sync background state with server
-      fetchBoardData();
     } catch (err) {
       const error = err as Error;
-      // Revert to original lists
+      // Revert ONLY that specific card's position
       setBoard((prevBoard) => {
         if (!prevBoard) return null;
+        const revertedLists = prevBoard.lists.map((list) => {
+          if (list.id === targetListId) {
+            return {
+              ...list,
+              cards: list.cards.filter((c) => c.id !== cardId),
+            };
+          }
+          if (list.id === sourceListId) {
+            const exists = list.cards.some((c) => c.id === cardId);
+            if (exists) return list;
+            const revertedCard = { ...cardToMove!, listId: sourceListId };
+            return {
+              ...list,
+              cards: [...list.cards, revertedCard],
+            };
+          }
+          return list;
+        });
         return {
           ...prevBoard,
-          lists: originalLists,
+          lists: revertedLists,
         };
       });
       setError(error.message || 'Failed to move card');
@@ -794,6 +803,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                       onDragStart={(e) => {
                         e.dataTransfer.setData('text/plain', card.id);
                         setDraggedCardId(card.id);
+                        setError(null);
                       }}
                       onDragEnd={() => {
                         setActiveDragOverListId(null);
