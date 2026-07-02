@@ -67,9 +67,11 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [activeDragOverListId, setActiveDragOverListId] = useState<string | null>(null);
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
 
-  const fetchBoardData = async () => {
+  const fetchBoardData = async (clearError = true) => {
     setIsLoading(true);
-    setError(null);
+    if (clearError) {
+      setError(null);
+    }
     try {
       const res = await fetch(`/api/boards/${boardId}`);
       if (!res.ok) {
@@ -340,10 +342,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         };
       });
 
+      // Trigger fetchBoardData(false) at the end of the catch block to sync client with actual DB state
+      await fetchBoardData(false);
       setError(error.message || 'Failed to move card');
-      
-      // Trigger fetchBoardData() at the end of the catch block to sync client with actual DB state
-      await fetchBoardData();
     }
   };
 
