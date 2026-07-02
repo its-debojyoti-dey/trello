@@ -241,45 +241,70 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
     if (!board) return;
 
-    // Find the source list and the card to move
-    let cardToMove: Card | undefined;
-    let sourceListId: string | undefined;
+    // Find the source list and the card to move from current board state first
+    let initialCardToMove: Card | undefined;
+    let initialSourceListId: string | undefined;
 
     for (const list of board.lists) {
       const card = list.cards.find((c) => c.id === cardId);
       if (card) {
-        cardToMove = card;
-        sourceListId = list.id;
+        initialCardToMove = card;
+        initialSourceListId = list.id;
         break;
       }
     }
 
-    if (!cardToMove || !sourceListId) return;
+    if (!initialCardToMove || !initialSourceListId) return;
+    if (initialSourceListId === targetListId) return;
 
-    // If the card is already in the target list, do nothing
-    if (sourceListId === targetListId) return;
+    // Variables to be populated by the functional state updater
+    let cardToMove: Card | undefined;
+    let sourceListId: string | undefined;
 
-    // Optimistically update the UI state
-    const updatedLists = board.lists.map((list) => {
-      if (list.id === sourceListId) {
-        return {
-          ...list,
-          cards: list.cards.filter((c) => c.id !== cardId),
-        };
+    // Optimistically update the UI state using the functional state updater callback
+    setBoard((prevBoard) => {
+      if (!prevBoard) return null;
+
+      let foundCard: Card | undefined;
+      let foundSourceListId: string | undefined;
+
+      for (const list of prevBoard.lists) {
+        const card = list.cards.find((c) => c.id === cardId);
+        if (card) {
+          foundCard = card;
+          foundSourceListId = list.id;
+          break;
+        }
       }
-      if (list.id === targetListId) {
-        const updatedCard = { ...cardToMove!, listId: targetListId };
-        return {
-          ...list,
-          cards: [...list.cards, updatedCard],
-        };
-      }
-      return list;
-    });
 
-    setBoard({
-      ...board,
-      lists: updatedLists,
+      if (!foundCard || !foundSourceListId) return prevBoard;
+      if (foundSourceListId === targetListId) return prevBoard;
+
+      // Assign to outer closure variables so we can use them in the catch block
+      cardToMove = foundCard;
+      sourceListId = foundSourceListId;
+
+      const updatedLists = prevBoard.lists.map((list) => {
+        if (list.id === foundSourceListId) {
+          return {
+            ...list,
+            cards: list.cards.filter((c) => c.id !== cardId),
+          };
+        }
+        if (list.id === targetListId) {
+          const updatedCard = { ...foundCard!, listId: targetListId };
+          return {
+            ...list,
+            cards: [...list.cards, updatedCard],
+          };
+        }
+        return list;
+      });
+
+      return {
+        ...prevBoard,
+        lists: updatedLists,
+      };
     });
 
     try {
@@ -295,9 +320,21 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
       }
     } catch (err) {
       const error = err as Error;
-      // Revert ONLY that specific card's position
+
+      // Revert ONLY that specific card's position if it is still in the target list
       setBoard((prevBoard) => {
         if (!prevBoard) return null;
+
+        // Verify that the card with cardId is actually present in targetListId currently
+        const targetList = prevBoard.lists.find((l) => l.id === targetListId);
+        const isCardPresentInTarget = targetList?.cards.some((c) => c.id === cardId);
+
+        if (!isCardPresentInTarget) {
+          // Abort rollback (do not change state)
+          return prevBoard;
+        }
+
+        // Revert card back to sourceListId
         const revertedLists = prevBoard.lists.map((list) => {
           if (list.id === targetListId) {
             return {
@@ -305,10 +342,13 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
               cards: list.cards.filter((c) => c.id !== cardId),
             };
           }
-          if (list.id === sourceListId) {
+          if (list.id === (sourceListId || initialSourceListId)) {
             const exists = list.cards.some((c) => c.id === cardId);
             if (exists) return list;
-            const revertedCard = { ...cardToMove!, listId: sourceListId };
+            const revertedCard = {
+              ...(cardToMove || initialCardToMove)!,
+              listId: (sourceListId || initialSourceListId)!,
+            };
             return {
               ...list,
               cards: [...list.cards, revertedCard],
@@ -316,6 +356,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
           }
           return list;
         });
+
         return {
           ...prevBoard,
           lists: revertedLists,
