@@ -41,6 +41,8 @@ model BoardList {
   boardId   String   @db.ObjectId
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards     Card[]
+
+  @@index([boardId])
 }
 
 model Card {
@@ -55,4 +57,7 @@ model Card {
   
   assignedTo  User?     @relation(fields: [assignedToId], references: [id])
   assignedToId String?  @db.ObjectId
+
+  @@index([listId])
+  @@index([assignedToId])
 }
