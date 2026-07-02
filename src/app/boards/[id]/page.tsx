@@ -295,42 +295,38 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     });
 
     try {
-      try {
-        const res = await fetch(`/api/cards/${cardId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ listId: targetListId }),
-        });
+      const res = await fetch(`/api/cards/${cardId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listId: targetListId }),
+      });
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || 'Failed to move card');
-        }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to move card');
+      }
 
-        setError(null);
-      } finally {
-        inFlightPuts.current--;
-        if (inFlightPuts.current === 0) {
-          await fetchBoardData(false);
-        }
+      setError(null);
+
+      // Decrement on success
+      inFlightPuts.current--;
+      if (inFlightPuts.current === 0) {
+        await fetchBoardData(false);
       }
     } catch (err) {
       const error = err as Error;
 
-      // Revert ONLY that specific card's position if it is still in the target list
+      // Decrement immediately on error
+      inFlightPuts.current--;
+
+      // Revert client state immediately (instant visual feedback)
       setBoard((prevBoard) => {
         if (!prevBoard) return null;
 
-        // Verify that the card with cardId is actually present in targetListId currently
         const targetList = prevBoard.lists.find((l) => l.id === targetListId);
         const currentCard = targetList?.cards.find((c) => c.id === cardId);
+        if (!currentCard) return prevBoard;
 
-        if (!currentCard) {
-          // Abort rollback (do not change state)
-          return prevBoard;
-        }
-
-        // Revert card back to sourceListId, keeping all its current fields/properties (to preserve any concurrent edits) except listId
         const revertedLists = prevBoard.lists.map((list) => {
           if (list.id === targetListId) {
             return {
@@ -359,9 +355,12 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         };
       });
 
-      // Trigger fetchBoardData(false) at the end of the catch block to sync client with actual DB state
-      await fetchBoardData(false);
       setError(error.message || 'Failed to move card');
+
+      // Sync state with database once all in-flight actions settle
+      if (inFlightPuts.current === 0) {
+        await fetchBoardData(false);
+      }
     }
   };
 
