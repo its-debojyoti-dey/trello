@@ -239,11 +239,54 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     const cardId = e.dataTransfer.getData('text/plain');
     if (!cardId) return;
 
-    // Find the target list to see if the card is already in it
-    const targetList = board?.lists.find((l) => l.id === targetListId);
-    const isCardAlreadyInList = targetList?.cards.some((c) => c.id === cardId);
+    if (!board) return;
 
-    if (isCardAlreadyInList) return;
+    // Find the source list and the card to move
+    let cardToMove: Card | undefined;
+    let sourceListId: string | undefined;
+
+    for (const list of board.lists) {
+      const card = list.cards.find((c) => c.id === cardId);
+      if (card) {
+        cardToMove = card;
+        sourceListId = list.id;
+        break;
+      }
+    }
+
+    if (!cardToMove || !sourceListId) return;
+
+    // If the card is already in the target list, do nothing
+    if (sourceListId === targetListId) return;
+
+    // Clear any previous error before performing the action
+    setError(null);
+
+    // Deep clone the original lists state to revert if needed
+    const originalLists = JSON.parse(JSON.stringify(board.lists)) as BoardList[];
+
+    // Optimistically update the UI state
+    const updatedLists = board.lists.map((list) => {
+      if (list.id === sourceListId) {
+        return {
+          ...list,
+          cards: list.cards.filter((c) => c.id !== cardId),
+        };
+      }
+      if (list.id === targetListId) {
+        const updatedCard = { ...cardToMove!, listId: targetListId };
+        return {
+          ...list,
+          cards: [...list.cards, updatedCard],
+        };
+      }
+      return list;
+    });
+
+    setBoard({
+      ...board,
+      lists: updatedLists,
+    });
 
     try {
       const res = await fetch(`/api/cards/${cardId}`, {
@@ -252,15 +295,24 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         body: JSON.stringify({ listId: targetListId }),
       });
 
-      const data = await res.json();
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to move card');
       }
 
+      // Sync background state with server
       fetchBoardData();
     } catch (err) {
       const error = err as Error;
-      alert(error.message || 'Failed to move card');
+      // Revert to original lists
+      setBoard((prevBoard) => {
+        if (!prevBoard) return null;
+        return {
+          ...prevBoard,
+          lists: originalLists,
+        };
+      });
+      setError(error.message || 'Failed to move card');
     }
   };
 
