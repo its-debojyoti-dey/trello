@@ -20,6 +20,7 @@ interface CardModalProps {
   boardMembers: User[];
   boardLists: BoardList[];
   onCardUpdated: () => void;
+  isMember: boolean;
 }
 
 export default function CardModal({
@@ -29,6 +30,7 @@ export default function CardModal({
   boardMembers,
   boardLists,
   onCardUpdated,
+  isMember,
 }: CardModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -301,6 +303,7 @@ export default function CardModal({
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter card name..."
                       required
+                      disabled={!isMember}
                     />
                   </div>
 
@@ -315,6 +318,7 @@ export default function CardModal({
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Add a detailed description for this card..."
+                      disabled={!isMember}
                       style={{
                         width: '100%',
                         minHeight: '120px',
@@ -360,6 +364,7 @@ export default function CardModal({
                       className="form-input"
                       value={assignedToId || ''}
                       onChange={(e) => setAssignedToId(e.target.value || null)}
+                      disabled={!isMember}
                       style={{
                         appearance: 'none',
                         backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`,
@@ -368,6 +373,7 @@ export default function CardModal({
                         backgroundSize: '14px',
                         paddingRight: '30px',
                         fontSize: '14px',
+                        cursor: isMember ? 'pointer' : 'default',
                       }}
                     >
                       <option value="">Unassigned</option>
@@ -390,6 +396,7 @@ export default function CardModal({
                       className="form-input"
                       value={listId}
                       onChange={(e) => setListId(e.target.value)}
+                      disabled={!isMember}
                       style={{
                         appearance: 'none',
                         backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`,
@@ -398,6 +405,7 @@ export default function CardModal({
                         backgroundSize: '14px',
                         paddingRight: '30px',
                         fontSize: '14px',
+                        cursor: isMember ? 'pointer' : 'default',
                       }}
                     >
                       {boardLists.map((list) => (
@@ -408,52 +416,54 @@ export default function CardModal({
                     </select>
                   </div>
 
-                  <div style={{ marginTop: 'var(--spacing-md)' }}>
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      style={{
-                        width: '100%',
-                        height: '36px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        backgroundColor: 'transparent',
-                        color: 'var(--colors-error)',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                        borderRadius: 'var(--rounded-md)',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
-                        e.currentTarget.style.borderColor = 'var(--colors-error)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                      }}
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                  {isMember && (
+                    <div style={{ marginTop: 'var(--spacing-md)' }}>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        style={{
+                          width: '100%',
+                          height: '36px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          backgroundColor: 'transparent',
+                          color: 'var(--colors-error)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: 'var(--rounded-md)',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                          e.currentTarget.style.borderColor = 'var(--colors-error)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                        }}
                       >
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      </svg>
-                      {isDeleting ? 'Deleting...' : 'Delete Card'}
-                    </button>
-                  </div>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        {isDeleting ? 'Deleting...' : 'Delete Card'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -477,16 +487,18 @@ export default function CardModal({
                 style={{ height: '36px', padding: '0 16px', fontSize: '13px' }}
                 disabled={isSaving}
               >
-                Cancel
+                {isMember ? 'Cancel' : 'Close'}
               </button>
-              <button
-                type="submit"
-                className="btn-primary"
-                style={{ height: '36px', padding: '0 16px', fontSize: '13px' }}
-                disabled={isSaving || !name.trim()}
-              >
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </button>
+              {isMember && (
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ height: '36px', padding: '0 16px', fontSize: '13px' }}
+                  disabled={isSaving || !name.trim()}
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              )}
             </div>
           </form>
         )}

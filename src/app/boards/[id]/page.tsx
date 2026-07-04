@@ -2,14 +2,15 @@
 
 import React, { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 import Header from '../../components/Header';
-import UserModal from '../../components/UserModal';
 import CardModal from '../../components/CardModal';
 
 interface User {
   id: string;
   name: string;
   email: string;
+  clerkId: string;
 }
 
 interface Card {
@@ -32,6 +33,7 @@ interface Board {
   id: string;
   name: string;
   privacy: string;
+  ownerId: string;
   userIds: string[];
   users: User[];
   lists: BoardList[];
@@ -40,6 +42,7 @@ interface Board {
 export default function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: boardId } = use(params);
   const router = useRouter();
+  const { user: clerkUser } = useUser();
 
   // Board Data and User lists
   const [board, setBoard] = useState<Board | null>(null);
@@ -47,12 +50,16 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const isAdmin = clerkUser?.publicMetadata?.role === 'admin';
+  const currentUserDb = board?.users.find((u) => u.clerkId === clerkUser?.id);
+  const isMember = !!currentUserDb || isAdmin;
+  const isOwner = board?.ownerId === currentUserDb?.id || isAdmin;
+
   // In-flight PUT tracking for drag and drop operations
   const inFlightPuts = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Modals state
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
@@ -460,7 +467,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <>
-      <Header onManageUsersClick={() => setIsUserModalOpen(true)} />
+      <Header />
 
       {/* Main Container */}
       <main
@@ -537,12 +544,13 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                 ) : (
                   <h1
                     onClick={() => {
+                      if (!isOwner) return;
                       setTempBoardName(board.name);
                       setIsEditingBoardName(true);
                     }}
                     className="text-title-lg"
-                    style={{ margin: 0, fontSize: '20px', fontWeight: 700, cursor: 'pointer' }}
-                    title="Click to rename board"
+                    style={{ margin: 0, fontSize: '20px', fontWeight: 700, cursor: isOwner ? 'pointer' : 'default' }}
+                    title={isOwner ? "Click to rename board" : undefined}
                   >
                     {board.name}
                   </h1>
@@ -550,6 +558,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                 <select
                   value={board.privacy}
                   onChange={(e) => handleUpdateBoardPrivacy(e.target.value)}
+                  disabled={!isOwner}
                   className="badge-pill"
                   style={{
                     fontSize: '11px',
@@ -564,7 +573,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                         ? 'var(--colors-warning)'
                         : 'var(--colors-success)',
                     border: 'none',
-                    cursor: 'pointer',
+                    cursor: isOwner ? 'pointer' : 'default',
                     outline: 'none',
                   }}
                 >
@@ -689,88 +698,92 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                 </div>
 
                 {/* Add member select dropdown */}
-                <select
-                  className="form-input"
-                  value=""
-                  onChange={(e) => {
-                    const userId = e.target.value;
-                    if (userId) {
-                      handleAddMember(userId);
-                    }
-                  }}
-                  style={{
-                    width: 'auto',
-                    minWidth: '120px',
-                    height: '28px',
-                    padding: '0 24px 0 8px',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    border: 'none',
-                    backgroundColor: 'transparent',
-                    cursor: 'pointer',
-                    appearance: 'none',
-                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 4px center',
-                    backgroundSize: '12px',
-                  }}
-                >
-                  <option value="" disabled>
-                    + Add Member
-                  </option>
-                  {nonMembers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
+                {isMember && (
+                  <select
+                    className="form-input"
+                    value=""
+                    onChange={(e) => {
+                      const userId = e.target.value;
+                      if (userId) {
+                        handleAddMember(userId);
+                      }
+                    }}
+                    style={{
+                      width: 'auto',
+                      minWidth: '120px',
+                      height: '28px',
+                      padding: '0 24px 0 8px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer',
+                      appearance: 'none',
+                      backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 4px center',
+                      backgroundSize: '12px',
+                    }}
+                  >
+                    <option value="" disabled>
+                      + Add Member
                     </option>
-                  ))}
-                  {nonMembers.length === 0 && (
-                    <option disabled>All users added</option>
-                  )}
-                </select>
+                    {nonMembers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                    {nonMembers.length === 0 && (
+                      <option disabled>All users added</option>
+                    )}
+                  </select>
+                )}
               </div>
 
               {/* Delete Board Button */}
-              <button
-                onClick={handleDeleteBoard}
-                style={{
-                  height: '32px',
-                  padding: '0 12px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  backgroundColor: 'transparent',
-                  color: 'var(--colors-error)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: 'var(--rounded-md)',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
-                  e.currentTarget.style.borderColor = 'var(--colors-error)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                }}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+              {isOwner && (
+                <button
+                  onClick={handleDeleteBoard}
+                  style={{
+                    height: '32px',
+                    padding: '0 12px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    backgroundColor: 'transparent',
+                    color: 'var(--colors-error)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: 'var(--rounded-md)',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                    e.currentTarget.style.borderColor = 'var(--colors-error)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                  }}
                 >
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-                Delete Board
-              </button>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  Delete Board
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -877,23 +890,29 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                 <div
                   key={list.id}
                   onDragOver={(e) => {
+                    if (!isMember) return;
                     e.preventDefault();
                     if (activeDragOverListId !== list.id) {
                       setActiveDragOverListId(list.id);
                     }
                   }}
                   onDragEnter={(e) => {
+                    if (!isMember) return;
                     e.preventDefault();
                     if (activeDragOverListId !== list.id) {
                       setActiveDragOverListId(list.id);
                     }
                   }}
                   onDragLeave={() => {
+                    if (!isMember) return;
                     if (activeDragOverListId === list.id) {
                       setActiveDragOverListId(null);
                     }
                   }}
-                  onDrop={(e) => handleDrop(e, list.id)}
+                  onDrop={(e) => {
+                    if (!isMember) return;
+                    handleDrop(e, list.id);
+                  }}
                   style={{
                     width: '280px',
                     flexShrink: 0,
@@ -945,6 +964,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                   ) : (
                     <h3
                       onClick={() => {
+                        if (!isMember) return;
                         setTempListName(list.name);
                         setEditingListId(list.id);
                       }}
@@ -956,51 +976,53 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                         whiteSpace: 'nowrap',
                         maxWidth: '200px',
                         fontSize: '15px',
-                        cursor: 'pointer',
+                        cursor: isMember ? 'pointer' : 'default',
                       }}
-                      title="Click to rename list"
+                      title={isMember ? "Click to rename list" : undefined}
                     >
                       {list.name}
                     </h3>
                   )}
-                  <button
-                    onClick={() => handleDeleteList(list.id, list.name)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--colors-muted)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: 'var(--rounded-sm)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'color 0.15s ease, background-color 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'var(--colors-error)';
-                      e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = 'var(--colors-muted)';
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                    title="Delete List"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                  {isMember && (
+                    <button
+                      onClick={() => handleDeleteList(list.id, list.name)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--colors-muted)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: 'var(--rounded-sm)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'color 0.15s ease, background-color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = 'var(--colors-error)';
+                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = 'var(--colors-muted)';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                      title="Delete List"
                     >
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                  </button>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                    </button>
+                  )}
                 </div>
 
                 {/* Cards Area */}
@@ -1018,8 +1040,12 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                   {filteredCards.map((card) => (
                     <div
                       key={card.id}
-                      draggable={true}
+                      draggable={isMember}
                       onDragStart={(e) => {
+                        if (!isMember) {
+                          e.preventDefault();
+                          return;
+                        }
                         e.dataTransfer.setData('text/plain', card.id);
                         setDraggedCardId(card.id);
                         setError(null);
@@ -1115,202 +1141,203 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                 </div>
 
                 {/* Add Card Form inline */}
-                <div
-                  style={{
-                    padding: 'var(--spacing-md)',
-                    borderTop: '1px solid var(--colors-hairline-soft)',
-                    pointerEvents: draggedCardId ? 'none' : 'auto',
-                  }}
-                >
-                  {activeAddCardListId === list.id ? (
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleAddCard(list.id);
-                      }}
-                      style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}
-                    >
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Enter card name..."
-                        value={newCardNames[list.id] || ''}
-                        onChange={(e) =>
-                          setNewCardNames((prev) => ({ ...prev, [list.id]: e.target.value }))
-                        }
-                        autoFocus
-                        required
-                        style={{ height: '32px', fontSize: '13px' }}
-                      />
-                      <div style={{ display: 'flex', gap: 'var(--spacing-xxs)', marginTop: '2px' }}>
-                        <button
-                          type="submit"
-                          className="btn-primary"
-                          style={{ height: '28px', padding: '0 12px', fontSize: '12px' }}
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          onClick={() => {
-                            setActiveAddCardListId(null);
-                            setNewCardNames((prev) => ({ ...prev, [list.id]: '' }));
-                          }}
-                          style={{ height: '28px', padding: '0 12px', fontSize: '12px' }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <button
-                      onClick={() => setActiveAddCardListId(list.id)}
-                      style={{
-                        width: '100%',
-                        height: '32px',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        color: 'var(--colors-muted)',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                        borderRadius: 'var(--rounded-md)',
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--colors-hairline-soft)';
-                        e.currentTarget.style.color = 'var(--colors-ink)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = 'var(--colors-muted)';
-                      }}
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                {isMember && (
+                  <div
+                    style={{
+                      padding: 'var(--spacing-md)',
+                      borderTop: '1px solid var(--colors-hairline-soft)',
+                      pointerEvents: draggedCardId ? 'none' : 'auto',
+                    }}
+                  >
+                    {activeAddCardListId === list.id ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleAddCard(list.id);
+                        }}
+                        style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}
                       >
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                      </svg>
-                      Add Card
-                    </button>
-                  )}
-                </div>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="Enter card name..."
+                          value={newCardNames[list.id] || ''}
+                          onChange={(e) =>
+                            setNewCardNames((prev) => ({ ...prev, [list.id]: e.target.value }))
+                          }
+                          autoFocus
+                          required
+                          style={{ height: '32px', fontSize: '13px' }}
+                        />
+                        <div style={{ display: 'flex', gap: 'var(--spacing-xxs)', marginTop: '2px' }}>
+                          <button
+                            type="submit"
+                            className="btn-primary"
+                            style={{ height: '28px', padding: '0 12px', fontSize: '12px' }}
+                          >
+                            Add
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => {
+                              setActiveAddCardListId(null);
+                              setNewCardNames((prev) => ({ ...prev, [list.id]: '' }));
+                            }}
+                            style={{ height: '28px', padding: '0 12px', fontSize: '12px' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <button
+                        onClick={() => setActiveAddCardListId(list.id)}
+                        style={{
+                          width: '100%',
+                          height: '32px',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          color: 'var(--colors-muted)',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          borderRadius: 'var(--rounded-md)',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--colors-hairline-soft)';
+                          e.currentTarget.style.color = 'var(--colors-ink)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = 'var(--colors-muted)';
+                        }}
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add Card
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               );
             })}
 
             {/* Add List column */}
-            <div style={{ width: '280px', flexShrink: 0 }}>
-              {showAddListForm ? (
-                <form
-                  onSubmit={handleAddList}
-                  style={{
-                    backgroundColor: 'var(--colors-surface-soft)',
-                    border: '1px solid var(--colors-hairline)',
-                    borderRadius: 'var(--rounded-lg)',
-                    padding: 'var(--spacing-md)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 'var(--spacing-xs)',
-                  }}
-                >
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Enter list title..."
-                    value={newListName}
-                    onChange={(e) => setNewListName(e.target.value)}
-                    autoFocus
-                    required
-                    style={{ height: '36px', fontSize: '14px' }}
-                  />
-                  <div style={{ display: 'flex', gap: 'var(--spacing-xxs)' }}>
-                    <button
-                      type="submit"
-                      className="btn-primary"
-                      style={{ height: '32px', padding: '0 14px', fontSize: '13px' }}
-                    >
-                      Add List
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      onClick={() => {
-                        setShowAddListForm(false);
-                        setNewListName('');
-                      }}
-                      style={{ height: '32px', padding: '0 14px', fontSize: '13px' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <button
-                  onClick={() => setShowAddListForm(true)}
-                  style={{
-                    width: '100%',
-                    height: '48px',
-                    backgroundColor: 'transparent',
-                    border: '1px dashed var(--colors-hairline)',
-                    borderRadius: 'var(--rounded-lg)',
-                    color: 'var(--colors-muted)',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--colors-primary)';
-                    e.currentTarget.style.color = 'var(--colors-ink)';
-                    e.currentTarget.style.backgroundColor = 'var(--colors-surface-soft)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--colors-hairline)';
-                    e.currentTarget.style.color = 'var(--colors-muted)';
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+            {isMember && (
+              <div style={{ width: '280px', flexShrink: 0 }}>
+                {showAddListForm ? (
+                  <form
+                    onSubmit={handleAddList}
+                    style={{
+                      backgroundColor: 'var(--colors-surface-soft)',
+                      border: '1px solid var(--colors-hairline)',
+                      borderRadius: 'var(--rounded-lg)',
+                      padding: 'var(--spacing-md)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--spacing-xs)',
+                    }}
                   >
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  Add List
-                </button>
-              )}
-            </div>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Enter list title..."
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      autoFocus
+                      required
+                      style={{ height: '36px', fontSize: '14px' }}
+                    />
+                    <div style={{ display: 'flex', gap: 'var(--spacing-xxs)' }}>
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                        style={{ height: '32px', padding: '0 14px', fontSize: '13px' }}
+                      >
+                        Add List
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => {
+                          setShowAddListForm(false);
+                          setNewListName('');
+                        }}
+                        style={{ height: '32px', padding: '0 14px', fontSize: '13px' }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => setShowAddListForm(true)}
+                    style={{
+                      width: '100%',
+                      height: '48px',
+                      backgroundColor: 'transparent',
+                      border: '1px dashed var(--colors-hairline)',
+                      borderRadius: 'var(--rounded-lg)',
+                      color: 'var(--colors-muted)',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--colors-primary)';
+                      e.currentTarget.style.color = 'var(--colors-ink)';
+                      e.currentTarget.style.backgroundColor = 'var(--colors-surface-soft)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--colors-hairline)';
+                      e.currentTarget.style.color = 'var(--colors-muted)';
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add List
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>
-
-      {/* User Management Modal */}
-      <UserModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} />
 
       {/* Card Details Modal */}
       {board && (
@@ -1324,6 +1351,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
           boardMembers={board.users}
           boardLists={board.lists.map((l) => ({ id: l.id, name: l.name }))}
           onCardUpdated={fetchBoardData}
+          isMember={isMember}
         />
       )}
     </>

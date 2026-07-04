@@ -1,15 +1,16 @@
 'use client';
 
 import React from 'react';
+import { UserButton, SignInButton, useUser } from '@clerk/nextjs';
+import Link from 'next/link';
 
-interface HeaderProps {
-  onManageUsersClick: () => void;
-}
+export default function Header() {
+  const { user, isLoaded } = useUser();
+  const isAdmin = user?.publicMetadata?.role === 'admin';
 
-export default function Header({ onManageUsersClick }: HeaderProps) {
   return (
     <header className="top-nav">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+      <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', textDecoration: 'none' }}>
         {/* Sleek Ascendo AI Geometric Logo */}
         <div
           style={{
@@ -39,21 +40,39 @@ export default function Header({ onManageUsersClick }: HeaderProps) {
         >
           Ascendo AI
         </span>
-      </div>
+      </Link>
 
       <div>
-        <button
-          onClick={onManageUsersClick}
-          className="btn-secondary"
-          style={{
-            height: '36px',
-            padding: '0 var(--spacing-md)',
-            fontSize: '14px',
-            fontWeight: 500,
-          }}
-        >
-          Manage Users
-        </button>
+        {isLoaded && user ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="btn-secondary"
+                style={{
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 var(--spacing-md)',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                }}
+              >
+                Admin Panel
+              </Link>
+            )}
+            <UserButton />
+          </div>
+        ) : isLoaded ? (
+          <SignInButton mode="modal">
+            <button className="btn-primary" style={{ height: '36px', padding: '0 var(--spacing-md)', fontSize: '14px', fontWeight: 500 }}>
+              Sign In
+            </button>
+          </SignInButton>
+        ) : (
+          <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--colors-surface-soft)' }} />
+        )}
       </div>
     </header>
   );

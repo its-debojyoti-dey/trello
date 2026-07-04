@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from './components/Header';
-import UserModal from './components/UserModal';
 
 interface Board {
   id: string;
@@ -18,8 +17,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Modal state
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+
 
   // Create Form state
   const [newBoardName, setNewBoardName] = useState('');
@@ -110,7 +108,7 @@ export default function Home() {
 
   return (
     <>
-      <Header onManageUsersClick={() => setIsUserModalOpen(true)} />
+      <Header />
 
       <main className="container" style={{ padding: 'var(--spacing-xl) var(--spacing-lg)' }}>
         {/* Error Banner */}
@@ -398,7 +396,7 @@ export default function Home() {
         </div>
       </main>
 
-      <UserModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} />
+
     </>
   );
 }
