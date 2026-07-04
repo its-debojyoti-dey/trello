@@ -73,32 +73,52 @@ export async function POST(req: Request) {
       // Find user to clean up card assignees
       const user = await db.user.findUnique({ where: { clerkId: id } });
       if (user) {
-        // 1. Delete all boards owned by this user
-        await db.board.deleteMany({ where: { ownerId: user.id } });
-
-        // 2. Remove user from userIds in any other boards they are members of
-        const boardsToUpdate = await db.board.findMany({
-          where: { userIds: { has: user.id } }
-        });
-        for (const board of boardsToUpdate) {
-          await db.board.update({
-            where: { id: board.id },
-            data: {
-              userIds: {
-                set: board.userIds.filter(uid => uid !== user.id)
-              }
-            }
+        // Run all cleanup operations inside a database transaction to ensure atomicity
+        await db.$transaction(async (tx) => {
+          // 1. Get all board IDs owned by this user
+          const ownedBoards = await tx.board.findMany({
+            where: { ownerId: user.id },
+            select: { id: true }
           });
-        }
+          const ownedBoardIds = ownedBoards.map(b => b.id);
 
-        // 3. Unassign the user from cards
-        await db.card.updateMany({
-          where: { assignedToId: user.id },
-          data: { assignedToId: null }
+          if (ownedBoardIds.length > 0) {
+            // Manual cascade delete cards and lists for these boards to avoid orphaned documents
+            await tx.card.deleteMany({
+              where: { list: { boardId: { in: ownedBoardIds } } }
+            });
+            await tx.boardList.deleteMany({
+              where: { boardId: { in: ownedBoardIds } }
+            });
+            await tx.board.deleteMany({
+              where: { id: { in: ownedBoardIds } }
+            });
+          }
+
+          // 2. Remove user from userIds in any other boards they are members of
+          const boardsToUpdate = await tx.board.findMany({
+            where: { userIds: { has: user.id } }
+          });
+          for (const board of boardsToUpdate) {
+            await tx.board.update({
+              where: { id: board.id },
+              data: {
+                userIds: {
+                  set: board.userIds.filter(uid => uid !== user.id)
+                }
+              }
+            });
+          }
+
+          // 3. Unassign the user from cards
+          await tx.card.updateMany({
+            where: { assignedToId: user.id },
+            data: { assignedToId: null }
+          });
+
+          // 4. Finally, delete the user
+          await tx.user.delete({ where: { id: user.id } });
         });
-
-        // 4. Finally, delete the user
-        await db.user.delete({ where: { id: user.id } });
       }
     }
     return new Response('User deleted successfully', { status: 200 });
