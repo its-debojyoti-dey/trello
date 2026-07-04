@@ -73,10 +73,31 @@ export async function POST(req: Request) {
       // Find user to clean up card assignees
       const user = await db.user.findUnique({ where: { clerkId: id } });
       if (user) {
+        // 1. Delete all boards owned by this user
+        await db.board.deleteMany({ where: { ownerId: user.id } });
+
+        // 2. Remove user from userIds in any other boards they are members of
+        const boardsToUpdate = await db.board.findMany({
+          where: { userIds: { has: user.id } }
+        });
+        for (const board of boardsToUpdate) {
+          await db.board.update({
+            where: { id: board.id },
+            data: {
+              userIds: {
+                set: board.userIds.filter(uid => uid !== user.id)
+              }
+            }
+          });
+        }
+
+        // 3. Unassign the user from cards
         await db.card.updateMany({
           where: { assignedToId: user.id },
           data: { assignedToId: null }
         });
+
+        // 4. Finally, delete the user
         await db.user.delete({ where: { id: user.id } });
       }
     }
