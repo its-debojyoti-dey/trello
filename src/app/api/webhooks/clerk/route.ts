@@ -95,9 +95,12 @@ export async function POST(req: Request) {
             });
           }
 
-          // 2. Remove user from userIds in any other boards they are members of
+          // 2. Remove user from userIds in any other boards they are members of (excluding owned boards which are already deleted)
           const boardsToUpdate = await tx.board.findMany({
-            where: { userIds: { has: user.id } }
+            where: {
+              userIds: { has: user.id },
+              ownerId: { not: user.id }
+            }
           });
           for (const board of boardsToUpdate) {
             await tx.board.update({
