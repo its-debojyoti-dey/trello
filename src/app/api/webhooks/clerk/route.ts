@@ -90,6 +90,22 @@ export async function POST(req: Request) {
             await tx.boardList.deleteMany({
               where: { boardId: { in: ownedBoardIds } }
             });
+            
+            // Clean up member users' boardIds arrays for the boards we are deleting
+            const usersToUpdate = await tx.user.findMany({
+              where: { boardIds: { hasSome: ownedBoardIds } }
+            });
+            for (const u of usersToUpdate) {
+              await tx.user.update({
+                where: { id: u.id },
+                data: {
+                  boardIds: {
+                    set: u.boardIds.filter(bid => !ownedBoardIds.includes(bid))
+                  }
+                }
+              });
+            }
+
             await tx.board.deleteMany({
               where: { id: { in: ownedBoardIds } }
             });
