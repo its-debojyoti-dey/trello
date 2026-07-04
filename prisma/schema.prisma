@@ -8,15 +8,17 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId     String   @unique
+  name        String
+  email       String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  boards    Board[]  @relation(fields: [boardIds], references: [id])
-  boardIds  String[] @db.ObjectId
-  cards     Card[]
+  ownedBoards Board[]  @relation("BoardOwner")
+  boards      Board[]  @relation("BoardMembers", fields: [boardIds], references: [id])
+  boardIds    String[] @db.ObjectId
+  cards       Card[]
 }
 
 model Board {
@@ -27,8 +29,11 @@ model Board {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  users     User[]      @relation(fields: [userIds], references: [id])
+  ownerId   String      @db.ObjectId
+  owner     User        @relation("BoardOwner", fields: [ownerId], references: [id])
+
   userIds   String[]    @db.ObjectId
+  users     User[]      @relation("BoardMembers", fields: [userIds], references: [id])
   lists     BoardList[]
 }
 
