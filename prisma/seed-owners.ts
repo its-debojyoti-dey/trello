@@ -35,6 +35,7 @@ async function main() {
 
   const defaultOwner = updatedUsers[0];
   const allBoards = await prisma.board.findMany();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const boards = allBoards.filter((board: any) => !board.ownerId);
 
   console.log(`Found ${boards.length} boards without an owner.`);

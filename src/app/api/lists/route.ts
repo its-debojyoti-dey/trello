@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     if (!dbUser) {
       return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
     }
-    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const isAdmin = (session.sessionClaims?.metadata as { role?: string })?.role === 'admin';
 
     const isMember = boardExists.ownerId === dbUser.id || boardExists.userIds.includes(dbUser.id);
     if (!isAdmin && !isMember) {

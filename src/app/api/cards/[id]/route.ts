@@ -29,7 +29,7 @@ export async function GET(
 
     // GET validation: Block if board is private and user is not member/owner/admin
     const session = await auth();
-    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const isAdmin = (session.sessionClaims?.metadata as { role?: string })?.role === 'admin';
     const dbUser = session.userId ? await db.user.findUnique({ where: { clerkId: session.userId } }) : null;
 
     if (card.list.board.privacy === 'PRIVATE') {
@@ -39,7 +39,8 @@ export async function GET(
       }
     }
 
-    const { list, ...cardWithoutList } = card;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { list: _list, ...cardWithoutList } = card;
     return NextResponse.json(cardWithoutList);
   } catch (e) {
     const error = e as Error;
@@ -89,7 +90,7 @@ export async function PUT(
     if (!dbUser) {
       return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
     }
-    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const isAdmin = (session.sessionClaims?.metadata as { role?: string })?.role === 'admin';
 
     const isMember = originalCard.list.board.ownerId === dbUser.id || originalCard.list.board.userIds.includes(dbUser.id);
     if (!isAdmin && !isMember) {
@@ -186,7 +187,7 @@ export async function DELETE(
     if (!dbUser) {
       return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
     }
-    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const isAdmin = (session.sessionClaims?.metadata as { role?: string })?.role === 'admin';
 
     const isMember = cardExists.list.board.ownerId === dbUser.id || cardExists.list.board.userIds.includes(dbUser.id);
     if (!isAdmin && !isMember) {

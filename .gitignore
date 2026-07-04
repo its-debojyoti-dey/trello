@@ -46,3 +46,8 @@ next-env.d.ts
 
 docs/
 .superpowers/
+
+# Walkthrough and demo scripts
+/WALKTHROUGH.md
+/record_demo.js
+/public/demo-video/

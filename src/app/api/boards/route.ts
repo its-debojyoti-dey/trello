@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
     }
 
-    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const isAdmin = (session.sessionClaims?.metadata as { role?: string })?.role === 'admin';
 
     const boards = await db.board.findMany({
       where: isAdmin ? {} : {

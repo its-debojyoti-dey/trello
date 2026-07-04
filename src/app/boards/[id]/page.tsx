@@ -71,6 +71,12 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [activeDragOverListId, setActiveDragOverListId] = useState<string | null>(null);
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
 
+  // Inline editing state for board and list attributes
+  const [isEditingBoardName, setIsEditingBoardName] = useState(false);
+  const [tempBoardName, setTempBoardName] = useState('');
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [tempListName, setTempListName] = useState('');
+
   const fetchBoardData = async (clearError = true) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -175,6 +181,67 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     } catch (err) {
       const error = err as Error;
       alert(error.message || 'Failed to add member to the board');
+    }
+  };
+
+  const handleRenameBoard = async () => {
+    if (!board || !tempBoardName.trim() || tempBoardName.trim() === board.name) {
+      setIsEditingBoardName(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/boards/${board.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tempBoardName.trim() }),
+      });
+      if (!res.ok) throw new Error('Failed to rename board');
+      setBoard(prev => prev ? { ...prev, name: tempBoardName.trim() } : null);
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setIsEditingBoardName(false);
+    }
+  };
+
+  const handleUpdateBoardPrivacy = async (newPrivacy: string) => {
+    if (!board) return;
+    try {
+      const res = await fetch(`/api/boards/${board.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ privacy: newPrivacy }),
+      });
+      if (!res.ok) throw new Error('Failed to update privacy');
+      setBoard(prev => prev ? { ...prev, privacy: newPrivacy } : null);
+    } catch (err) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleRenameList = async (listId: string) => {
+    if (!tempListName.trim()) {
+      setEditingListId(null);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/lists/${listId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tempListName.trim() }),
+      });
+      if (!res.ok) throw new Error('Failed to rename list');
+      setBoard(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          lists: prev.lists.map(l => l.id === listId ? { ...l, name: tempListName.trim() } : l)
+        };
+      });
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setEditingListId(null);
     }
   };
 
@@ -447,10 +514,42 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             </button>
             {board && (
               <>
-                <h1 className="text-title-lg" style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>
-                  {board.name}
-                </h1>
-                <span
+                {isEditingBoardName ? (
+                  <input
+                    type="text"
+                    value={tempBoardName}
+                    onChange={(e) => setTempBoardName(e.target.value)}
+                    onBlur={handleRenameBoard}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleRenameBoard();
+                      if (e.key === 'Escape') setIsEditingBoardName(false);
+                    }}
+                    autoFocus
+                    className="form-input"
+                    style={{
+                      height: '32px',
+                      fontSize: '18px',
+                      fontWeight: 600,
+                      width: '200px',
+                      padding: '0 8px',
+                    }}
+                  />
+                ) : (
+                  <h1
+                    onClick={() => {
+                      setTempBoardName(board.name);
+                      setIsEditingBoardName(true);
+                    }}
+                    className="text-title-lg"
+                    style={{ margin: 0, fontSize: '20px', fontWeight: 700, cursor: 'pointer' }}
+                    title="Click to rename board"
+                  >
+                    {board.name}
+                  </h1>
+                )}
+                <select
+                  value={board.privacy}
+                  onChange={(e) => handleUpdateBoardPrivacy(e.target.value)}
                   className="badge-pill"
                   style={{
                     fontSize: '11px',
@@ -464,10 +563,14 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                       board.privacy === 'PRIVATE'
                         ? 'var(--colors-warning)'
                         : 'var(--colors-success)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    outline: 'none',
                   }}
                 >
-                  {board.privacy}
-                </span>
+                  <option value="PUBLIC">PUBLIC</option>
+                  <option value="PRIVATE">PRIVATE</option>
+                </select>
               </>
             )}
           </div>
@@ -820,19 +923,46 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                     pointerEvents: draggedCardId ? 'none' : 'auto',
                   }}
                 >
-                  <h3
-                    className="text-title-sm"
-                    style={{
-                      margin: 0,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      maxWidth: '200px',
-                      fontSize: '15px',
-                    }}
-                  >
-                    {list.name}
-                  </h3>
+                  {editingListId === list.id ? (
+                    <input
+                      type="text"
+                      value={tempListName}
+                      onChange={(e) => setTempListName(e.target.value)}
+                      onBlur={() => handleRenameList(list.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRenameList(list.id);
+                        if (e.key === 'Escape') setEditingListId(null);
+                      }}
+                      autoFocus
+                      className="form-input"
+                      style={{
+                        height: '28px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        padding: '0 4px',
+                      }}
+                    />
+                  ) : (
+                    <h3
+                      onClick={() => {
+                        setTempListName(list.name);
+                        setEditingListId(list.id);
+                      }}
+                      className="text-title-sm"
+                      style={{
+                        margin: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: '200px',
+                        fontSize: '15px',
+                        cursor: 'pointer',
+                      }}
+                      title="Click to rename list"
+                    >
+                      {list.name}
+                    </h3>
+                  )}
                   <button
                     onClick={() => handleDeleteList(list.id, list.name)}
                     style={{

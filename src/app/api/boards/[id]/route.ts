@@ -33,7 +33,7 @@ export async function GET(
 
     // GET validation: Block if private and user is not member/owner/admin
     const session = await auth();
-    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const isAdmin = (session.sessionClaims?.metadata as { role?: string })?.role === 'admin';
     const dbUser = session.userId ? await db.user.findUnique({ where: { clerkId: session.userId } }) : null;
 
     if (board.privacy === 'PRIVATE') {
@@ -79,7 +79,7 @@ export async function PUT(
     if (!dbUser) {
       return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
     }
-    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const isAdmin = (session.sessionClaims?.metadata as { role?: string })?.role === 'admin';
 
     if (!isAdmin && boardExists.ownerId !== dbUser.id) {
       return NextResponse.json({ error: 'Only the board owner or admin can perform this action' }, { status: 403 });
@@ -119,7 +119,7 @@ export async function DELETE(
     if (!dbUser) {
       return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
     }
-    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const isAdmin = (session.sessionClaims?.metadata as { role?: string })?.role === 'admin';
 
     if (!isAdmin && boardExists.ownerId !== dbUser.id) {
       return NextResponse.json({ error: 'Only the board owner or admin can perform this action' }, { status: 403 });
