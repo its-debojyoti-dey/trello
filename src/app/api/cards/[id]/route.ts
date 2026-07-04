@@ -1,3 +1,4 @@
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { isValidObjectId } from '@/lib/utils';
@@ -15,12 +16,31 @@ export async function GET(
       where: { id },
       include: {
         assignedTo: true,
+        list: {
+          include: {
+            board: true,
+          },
+        },
       },
     });
     if (!card) {
       return NextResponse.json({ error: 'Card not found' }, { status: 404 });
     }
-    return NextResponse.json(card);
+
+    // GET validation: Block if board is private and user is not member/owner/admin
+    const session = await auth();
+    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+    const dbUser = session.userId ? await db.user.findUnique({ where: { clerkId: session.userId } }) : null;
+
+    if (card.list.board.privacy === 'PRIVATE') {
+      if (!dbUser && !isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      if (!isAdmin && card.list.board.ownerId !== dbUser?.id && !card.list.board.userIds.includes(dbUser!.id)) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+    }
+
+    const { list, ...cardWithoutList } = card;
+    return NextResponse.json(cardWithoutList);
   } catch (e) {
     const error = e as Error;
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -58,6 +78,22 @@ export async function PUT(
 
     if (!originalCard) {
       return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+    }
+
+    // PUT validation: Block unless user is member or admin
+    const session = await auth();
+    if (!session.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const dbUser = await db.user.findUnique({ where: { clerkId: session.userId } });
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
+    }
+    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+
+    const isMember = originalCard.list.board.ownerId === dbUser.id || originalCard.list.board.userIds.includes(dbUser.id);
+    if (!isAdmin && !isMember) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const dataToUpdate: {
@@ -127,10 +163,36 @@ export async function DELETE(
     if (!isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
     }
-    const cardExists = await db.card.findUnique({ where: { id } });
+    const cardExists = await db.card.findUnique({
+      where: { id },
+      include: {
+        list: {
+          include: {
+            board: true,
+          },
+        },
+      },
+    });
     if (!cardExists) {
       return NextResponse.json({ error: 'Card not found' }, { status: 404 });
     }
+
+    // DELETE validation: Block unless user is member or admin
+    const session = await auth();
+    if (!session.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const dbUser = await db.user.findUnique({ where: { clerkId: session.userId } });
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
+    }
+    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+
+    const isMember = cardExists.list.board.ownerId === dbUser.id || cardExists.list.board.userIds.includes(dbUser.id);
+    if (!isAdmin && !isMember) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     await db.card.delete({
       where: { id },
     });
@@ -140,3 +202,4 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

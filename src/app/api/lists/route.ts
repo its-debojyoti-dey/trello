@@ -1,3 +1,4 @@
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { isValidObjectId } from '@/lib/utils';
@@ -17,6 +18,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Board not found' }, { status: 404 });
     }
 
+    const session = await auth();
+    if (!session.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const dbUser = await db.user.findUnique({ where: { clerkId: session.userId } });
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User record not synced yet' }, { status: 403 });
+    }
+    const isAdmin = (session.sessionClaims?.metadata as any)?.role === 'admin';
+
+    const isMember = boardExists.ownerId === dbUser.id || boardExists.userIds.includes(dbUser.id);
+    if (!isAdmin && !isMember) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     const list = await db.boardList.create({
       data: {
         name,
@@ -29,3 +45,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
