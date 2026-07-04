@@ -13,11 +13,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { name, email } = await req.json();
+    const { name, email, clerkId } = await req.json();
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email required' }, { status: 400 });
     }
-    const user = await db.user.create({ data: { name, email } });
+    const finalClerkId = clerkId || `mock_clerk_${Date.now()}`;
+    const user = await db.user.create({ data: { name, email, clerkId: finalClerkId } });
     return NextResponse.json(user, { status: 201 });
   } catch (e) {
     const error = e as Error;

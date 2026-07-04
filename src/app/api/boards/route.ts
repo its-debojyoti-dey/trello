@@ -17,10 +17,16 @@ export async function POST(req: Request) {
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
+    const defaultUser = await db.user.findFirst();
+    if (!defaultUser) {
+      return NextResponse.json({ error: 'No users exist to own this board. Create a user first.' }, { status: 400 });
+    }
     const board = await db.board.create({
       data: {
         name,
         privacy: privacy || 'PUBLIC',
+        ownerId: defaultUser.id,
+        userIds: [defaultUser.id]
       },
     });
     const updatedBoard = await db.board.update({
