@@ -1,6 +1,6 @@
 # Ascendo AI Kanban Board
 
-A modern, high-performance, and feature-rich Kanban Board application built with Next.js (App Router), React 19, Tailwind CSS, Prisma, and MongoDB.
+A modern, high-performance, and feature-rich Kanban Board application built with Next.js (App Router), React 19, Tailwind CSS, Clerk, Prisma, and MongoDB.
 
 ## Features
 
