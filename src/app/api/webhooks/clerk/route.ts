@@ -51,18 +51,43 @@ export async function POST(req: Request) {
 
     const fullName = [first_name, last_name].filter(Boolean).join(' ') || 'User';
 
-    await db.user.upsert({
+    // Check if user already exists by clerkId
+    const existingByClerkId = await db.user.findUnique({
       where: { clerkId: id },
-      update: {
-        name: fullName,
-        email: primaryEmail,
-      },
-      create: {
-        clerkId: id,
-        name: fullName,
-        email: primaryEmail,
-      },
     });
+
+    if (existingByClerkId) {
+      await db.user.update({
+        where: { clerkId: id },
+        data: {
+          name: fullName,
+          email: primaryEmail,
+        },
+      });
+    } else {
+      // Check if user already exists by email to prevent User_email_key violations
+      const existingByEmail = await db.user.findUnique({
+        where: { email: primaryEmail },
+      });
+
+      if (existingByEmail) {
+        await db.user.update({
+          where: { email: primaryEmail },
+          data: {
+            clerkId: id,
+            name: fullName,
+          },
+        });
+      } else {
+        await db.user.create({
+          data: {
+            clerkId: id,
+            name: fullName,
+            email: primaryEmail,
+          },
+        });
+      }
+    }
 
     return new Response('User synced successfully', { status: 200 });
   }
