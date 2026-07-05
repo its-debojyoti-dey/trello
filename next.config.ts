@@ -3,10 +3,10 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  allowedDevOrigins: ['ascendo.debojyotidey.online'],
+  allowedDevOrigins: ['ascendo.debojyotidey.online', "ascendo-ai.vercel.app"],
   experimental: {
     serverActions: {
-      allowedOrigins: ['ascendo.debojyotidey.online'],
+      allowedOrigins: ['ascendo.debojyotidey.online', "ascendo-ai.vercel.app"],
     },
   },
   turbopack: {
